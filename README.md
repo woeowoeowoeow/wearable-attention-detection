@@ -12,8 +12,9 @@ Can a low-cost wrist-worn device detect attentional distraction during naturalis
 ## WESAD Feasibility Analysis
 As a validation step, a physiological signal processing and classification pipeline was developed and evaluated on the publicly available WESAD database (wrist device signals from 15 total subjects)
 
-**Results**
+**Results:**
 | Model | Raw Accuracy | Balanced Accuracy |
+|---|---|---|
 | EDA Only (13 features) | 83.6% | 80.2% |
 | Multimodal EDA + HRV + ACC (29 features) | 81.1% | 78.0% |
 
