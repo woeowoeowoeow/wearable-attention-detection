@@ -1,6 +1,9 @@
 # Wearable Attention Detection
 Research project developing a wrist-worn physiological sensor system for detecting distraction in students.
 
+## Research Question
+Can a low-cost wrist-worn device detect attentional distraction during naturalistic study tasks using physiological data and ML classification?
+
 ## Current status:
 - WESAD feasibility analysis complete
 - Arduino hardware prototype in development
