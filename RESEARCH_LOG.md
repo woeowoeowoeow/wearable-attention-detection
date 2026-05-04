@@ -33,3 +33,11 @@ Optimal K=13 matched the EDA-only feature set EXACTLY
 - EDA is the dominant signal for stress classification, and HRV/ACC just add noise
 - doesn't necessarily generalize for distraction data so
 - means hardware quality should probably focus more on EDA, but still have HRV/ACC
+
+## 5-4-2026
+Found more studies that directly support this research. will add citations later?
+PAMG-AT: https://www.biorxiv.org/content/10.64898/2026.03.02.709179v1
+AttentiveU: https://pmc.ncbi.nlm.nih.gov/articles/PMC6929136/ (same closed-loop but w/ EEG)
+
+EDA-Cardiac Relationship
+- PAMG-AT study found the ECG-EDA predictions are most indicative of stress, so added a function for that. as of 8:45 AM i've only added the function but I think it's still only using 13 features? so that needs to be fixed and it's probably not a bad idea to just define all four models so i have direct comparisons
