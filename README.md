@@ -18,10 +18,11 @@ As a validation step, a physiological signal processing and classification pipel
 | EDA Only (13 features) | 83.6% | 80.2% |
 | Multimodal EDA + HRV + ACC (29 features) | 81.1% | 78.0% |
 | Feature Selection Optimal K=13 | 84.3% | 82.0% |
+| ECG-EDA Relationship | 84.0% | 81.2% |
 
 **Key Findings**
 - EDA-only outperformed multimodal on stress classifications
-- Feature selection optimal model achieved the best performance at K=13 (84.3% raw accuracy, 82.0% balanced accuracy), outperforming EDA-only (83.6% and 80.2%) and multimodal (81.1% and 78.0%
+- Feature selection optimal model achieved the best performance at K=13 (84.3% raw accuracy, 82.0% balanced accuracy), outperforming EDA-only (83.6% and 80.2%), multimodal (81.1% and 78.0%), and ECG-EDA (84.0% and 81.2%)
 - 13 EDA features were consistently selected across 15 LOSO folds -- all HRV + ACC features were excluded
 - Subject 14 had 50% balanced accuracy -- means some people don't fit in w/ generalized data
 
