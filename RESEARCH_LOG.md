@@ -45,3 +45,6 @@ EDA-Cardiac Relationship
 
 Notes
 - good for tinyML since there are a lower number of features?
+
+## 6-11-2026
+Pre-registered study on OSF. DOI: 10.17605/OSF.IO/SVH9Q. URL: osf.io/svh9q. Registered 6/11 prior to any formal participant data collection.
