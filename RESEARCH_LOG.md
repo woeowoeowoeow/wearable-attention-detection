@@ -48,3 +48,30 @@ Notes
 
 ## 6-11-2026
 Pre-registered study on OSF. DOI: 10.17605/OSF.IO/SVH9Q. URL: osf.io/svh9q. Registered 6/11 prior to any formal participant data collection.
+
+## 6-27-2026
+Made thought probe app.
+- Python/tkinter, fully study flow: insructions, 25m reading + random probes, self-caught button, comprehension quiz, acceptability questionaire
+- probes fire at random 60-90s intervals, 4-point scale (1=on task, 4=mind wandering completely)
+- 8-10s response timeout on probes, missing if no response -- prevents distracted sessions from eating disproportionate time
+- self-caught button always available during reading, doesn't pause probe timer
+- supports both passage orders (A-then-B / B-then-A) for counterbalancing
+
+Design decisions
+- reading timer does NOT pause for probes -- probes eat into the 25 min like a real interruption would. logging net_reading_time (25min - total probe time) to check this doesn't add much variance between participants
+- quiz is closed-book, passage hidden during questions -- open-book would let people scan for answers regardless of how attentive they were while reading, which breaks the comprehension score as a proxy for attention (relevant for H4)
+- timestamps as int(time.time() * 1000) -- needs to match Arduino's timestamp format later for alignment
+
+Content
+- 2 original passages, ~700 words each, ~1150-1350L (coral bleaching, eyewitness memory)
+- picked topics unrelated to attention/cognition on purpose -- first draft from a coding assistant defaulted to passages ABOUT cognitive science/attention research, which would prime people in a study that's literally about attention. swapped those out
+- 7 MCQ per passage, spread across different parts of the passage not just the intro, so a skimmer can't just answer from the first paragraph
+
+Testing
+- ran full flow in --test mode (compressed timers), confirmed CSV writes incrementally, probe/self-caught don't double-fire, condition order toggle works, quiz scoring matches answer key
+
+Repo
+- moved into main repo under data_collection/thought_probe_app/
+- hit a Windows file lock error moving the folder (had it open somewhere else), closed everything and retried, worked
+
+Next: data alignment script (Arduino CSV + probe CSV -> labeled windows), validating hardware since hardware arrives tomorrow!
