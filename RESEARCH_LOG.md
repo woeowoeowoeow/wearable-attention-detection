@@ -75,3 +75,27 @@ Repo
 - hit a Windows file lock error moving the folder (had it open somewhere else), closed everything and retried, worked
 
 Next: data alignment script (Arduino CSV + probe CSV -> labeled windows), validating hardware since hardware arrives tomorrow!
+
+## 6-28-2026
+Hardware validation - Day 1
+
+- Arduino Uno confirmed working (Blink test)
+- MPU-6050 wired and validated -- I2C scanner found address 0x68,
+  accelerometer values change correctly with movement
+- MAX30102 wired and validated -- I2C scanner found address 0x57,
+  heart rate readings pulse correctly with finger placement
+- MicroSD module wired and validated -- CardInfo and Datalogger 
+  examples both worked, confirmed file written and readable on computer
+- EDA voltage divider circuit -- deferred to tomorrow, electrodes 
+  not yet connected/tested
+
+Notes:
+- header pins need to be soldered, not just pressed in --
+  loose contact isn't reliable enough to trust
+- baud rate mismatch caused garbled Serial Monitor output early on, 
+  resolved by matching Serial.begin() value to monitor dropdown
+- MPU-6050 and MAX30102 share I2C bus successfully, confirmed via 
+  scanner showing both addresses simultaneously
+
+Next: validate EDA circuit with electrodes, then combine all four 
+sensors into one sketch
