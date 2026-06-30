@@ -1,0 +1,5 @@
+WESAD_data/
+*.csv
+*.txt
+.ipynb_checkpoints/
+__pycache__/
