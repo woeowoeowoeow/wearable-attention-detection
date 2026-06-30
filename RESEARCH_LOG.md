@@ -99,3 +99,50 @@ Notes:
 
 Next: validate EDA circuit with electrodes, then combine all four 
 sensors into one sketch
+
+## 6-29-2026
+First combined-sensor hardware session (recovered from SD failure)
+
+- SD card write failed mid-session -- recovered data from Serial Monitor
+  copy-paste, reconstructed wall-clock timestamps from two anchor points
+  (Arduino millis() <-> noted clock times)
+- EDA, PPG, ACC all show real structured signal (step-like EDA, sensible
+  PPG range, mostly-flat ACC with clear movement bursts) -- hardware
+  confirmed working end-to-end
+- protocol: rest -> arithmetic -> rest -> mind-wander -> movement -> 
+  final rest, phase times tracked manually by checking a clock
+
+Findings:
+- phase boundaries don't line up cleanly with EDA changes -- EDA actually
+  declines through the labeled arithmetic phase instead of rising, and
+  the biggest EDA rise in the session happens mostly before the labeled
+  mind-wander phase starts
+- most likely explanation is timing slop (tens of seconds) from manual
+  clock-checking, not a hardware/physiological issue
+- the one big sustained EDA rise that DOES line up well is at movement
+  start -- but that's almost certainly motion artifact, not cognitive load
+- noticed repeated small EDA/ACC blips even during "quiet" phases --
+  hypothesis: the act of checking a clock to track timing is itself a
+  small motion/attention event, i.e. a confound from the protocol itself
+- some connections weren't fully secure (shifted around during session),
+  contributing additional motion noise on top of the timing issue
+
+Pipeline:
+- built artifact-exclusion (ACC std > mean + 2SD), reasonable exclusion
+  rate
+- full pipeline (windowing -> NeuroKit2 -> feature extraction) ran
+  end-to-end on real device data with no errors -- counts as a pipeline
+  smoke test, NOT a cognitive-state detection result
+
+Notes:
+- can't conclude anything about cognitive-load detection from this
+  session specifically -- signal quality/structure is validated, labeling
+  accuracy is not
+- didn't discard the session -- reframed as hardware validation + two
+  named methodological findings (manual timing imprecision, clock-check
+  confound)
+
+Next: automated/silent timer for phase transitions (no manual clock
+checking), secure all connections before starting and don't adjust
+mid-session, minimize incidental movement during non-movement phases,
+rerun calibration
