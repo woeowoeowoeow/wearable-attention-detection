@@ -1,6 +1,4 @@
 #include <MAX30105.h>
-#include <heartRate.h>
-#include <spo2_algorithm.h>
 
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -17,44 +15,60 @@ MAX30105 particleSensor;
 unsigned long lastSampleTime = 0;
 const unsigned long sampleInterval = 250; // 4 Hz
 
+unsigned long lastFlush = 0;
+const unsigned long flushInterval = 1000; // flush to SD once per second
+
+unsigned long rowCount = 0;
+unsigned long writeFailCount = 0;
+
 void setup() {
     Serial.begin(9600);
     delay(2000);
-    Serial.println("Starting setup...");
+    Serial.println(F("Starting setup..."));
 
     Wire.begin();
 
     // Initialize SD card
     if (!SD.begin(chipSelect)) {
-        Serial.println("SD initialization failed!");
+        Serial.println(F("SD initialization failed!"));
         return;
     }
-    Serial.println("SD initialized.");
+    Serial.println(F("SD initialized."));
 
     // Initialize MPU-6050
     if (!mpu.begin()) {
-        Serial.println("MPU6050 connection failed!");
+        Serial.println(F("MPU6050 connection failed!"));
     } else {
-        Serial.println("MPU6050 connected.");
+        Serial.println(F("MPU6050 connected."));
     }
 
     // Initialize MAX30102
     if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
-        Serial.println("MAX30102 not found!");
+        Serial.println(F("MAX30102 not found!"));
     } else {
-        Serial.println("MAX30102 connected.");
+        Serial.println(F("MAX30102 connected."));
         particleSensor.setup(); // default settings
     }
 
-    // Write CSV header once at the start
-    dataFile = SD.open("session_log.csv", FILE_WRITE);
-    if (dataFile) {
-        dataFile.println("timestamp_ms,eda_raw,eda_conductance_us,"
-                          "acc_x,acc_y,acc_z,ppg_ir,ppg_red");
-        dataFile.close();
+    // Right before opening the file in setup():
+    if (SD.exists("session_log.csv")) {
+        SD.remove("session_log.csv");
+        Serial.println(F("Removed old session_log.csv"));
     }
 
-    Serial.println("Setup complete. Starting loop...");
+    // Open the file ONCE and keep it open for the whole session
+    dataFile = SD.open("session_log.csv", FILE_WRITE);
+    if (dataFile) {
+        dataFile.println(F("timestamp_ms,eda_raw,eda_conductance_us,"
+                            "acc_x,acc_y,acc_z,ppg_ir,ppg_red"));
+        dataFile.flush();
+        Serial.println(F("CSV header written to SD."));
+    } else {
+        Serial.println(F("WARNING: failed to open session_log.csv!"));
+    }
+
+    lastFlush = millis();
+    Serial.println(F("Setup complete. Starting loop..."));
 }
 
 void loop() {
@@ -80,8 +94,9 @@ void loop() {
         long irValue = particleSensor.getIR();
         long redValue = particleSensor.getRed();
 
-        // --- Write everything to one CSV row ---
-        dataFile = SD.open("session_log.csv", FILE_WRITE);
+        // --- Write to the already-open file ---
+        bool writeOK = false;
+
         if (dataFile) {
             dataFile.print(currentTime);
             dataFile.print(",");
@@ -98,10 +113,13 @@ void loop() {
             dataFile.print(irValue);
             dataFile.print(",");
             dataFile.println(redValue);
-            dataFile.close();
+            writeOK = true;
+            rowCount++;
+        } else {
+            writeFailCount++;
         }
 
-        // Also print to Serial for live monitoring
+        // --- Also print to Serial for live monitoring ---
         Serial.print(currentTime);
         Serial.print(",");
         Serial.print(conductance_us, 3);
@@ -114,6 +132,24 @@ void loop() {
         Serial.print(",");
         Serial.print(irValue);
         Serial.print(",");
-        Serial.println(redValue);
+        Serial.print(redValue);
+
+        if (writeOK) {
+            Serial.print(F(" | SD OK (row "));
+            Serial.print(rowCount);
+            Serial.println(")");
+        } else {
+            Serial.print(F(" | SD WRITE FAILED (fail count: "));
+            Serial.print(writeFailCount);
+            Serial.println(")");
+        }
+    }
+
+    // --- Periodically flush so data is physically committed to the card ---
+    if (millis() - lastFlush >= flushInterval) {
+        lastFlush = millis();
+        if (dataFile) {
+            dataFile.flush();
+        }
     }
 }

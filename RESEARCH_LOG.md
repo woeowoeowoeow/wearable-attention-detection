@@ -146,3 +146,125 @@ Next: automated/silent timer for phase transitions (no manual clock
 checking), secure all connections before starting and don't adjust
 mid-session, minimize incidental movement during non-movement phases,
 rerun calibration
+
+## 6-30-2026
+Repo cleanup, self-calibration timer app, first automated session
+
+- diagnosed a failed git push (HTTP 408, 2.32 GiB payload) -- caused by
+  the WESAD_data folder being committed. push hadn't actually landed on
+  origin so it was a local-only fix
+- added .gitignore (WESAD_data/, *.csv, *.txt, __pycache__/,
+  .ipynb_checkpoints/), untracked WESAD_data with git rm -r --cached,
+  recommitted clean
+- decided not to keep raw WESAD data in the repo -- it's public anyway,
+  can just link the source in the README
+
+- specced a self-calibration timer app to fix the 6/29 clock-checking
+  problem -- hidden by default (global hotkey to toggle), audio cue at
+  each phase transition, logs to CSV in the same int(time.time()*1000)
+  format as everything else, no manual clock-watching needed
+- locked in the 7-phase protocol: baseline (5min) -> rest (3min) ->
+  arithmetic (3min) -> rest/recovery (3min) -> mind-wander (3min) ->
+  movement (1min) -> final rest (2min), 19 min total
+- handed off to OpenCode to build in VS Code
+
+- built sensor_connection_test.ino to check all 4 components before a
+  session instead of finding out mid-session something's loose
+- added SD write confirmation to all_collect.ino (row counter, fail
+  counter) after the connection test work
+- rewrote all_collect.ino to match the original independent-sampling-
+  rate architecture from earlier (EDA 4Hz, ACC 32Hz, PPG 64Hz separate)
+  instead of the single shared 4Hz loop -- ended up not using this
+  version, more below
+
+Hardware debugging (long one)
+- uploaded, got "Low memory available" warning -- 362 bytes free RAM,
+  dangerously low on the Uno. traced to string literals eating SRAM
+- fixed with F() macro on all Serial.println/print string literals +
+  removed unused heartRate.h/spo2_algorithm.h includes -- no behavior
+  change, just freed up RAM
+- next found ACC and PPG timestamps firing in lockstep instead of at
+  their real independent rates -- traced to dataFile.flush() on every
+  single row bottlenecking the loop. fixed by moving flush() to once
+  per second instead of every write, throttled Serial output to ~10x/
+  sec (SD write still happens every row regardless)
+- then hit "SD WRITE FAILED" errors climbing steadily from row 1 --
+  traced to opening/closing the file on every row, which apparently
+  destabilizes the SD library's internal state after enough cycles.
+  fixed by opening the file once in setup() and keeping it open,
+  flushing periodically instead
+- went back to testing my actual working all_collect.ino from before
+  (single 4Hz loop, open/close per row) with just the SD confirmation
+  added -- immediately failed too, "WARNING: failed to open
+  session_log.csv" right in setup(), before the loop even started
+- tried SD.remove() before writing to rule out a corrupted leftover
+  file -- no change
+- fully reformatted the SD card -- no change
+- ran CardInfo sketch alone -- card reads fine, wiring confirmed good,
+  FAT32 confirmed
+- ran an isolated write-only test (no other sensors) -- failed
+  immediately even alone, even on a brand new filename
+- tried a second, different physical SD card in the same reader --
+  also failed
+- ruled out: wiring, power to the rest of the circuit, filesystem
+  corruption, code logic, CS pin config. narrowed to the SD reader
+  module itself (probably a cheap resistor-based level shifter that
+  can't handle write current/timing, or a floating WP pin) -- not
+  confirmed, would need a different reader to test
+- gave up on SD for today. switched to serial-to-computer logging
+  instead -- all_collect_serial.ino streams CSV rows over Serial,
+  log_session.py on the laptop reads and saves them, stamping its own
+  wallclock_ms on receipt
+- this is actually fine, not just a fallback -- the laptop-tethered
+  architecture was already the planned primary system for the formal
+  study, SD logging was only ever the parallel TinyML comparison path
+
+First automated-timer self-calibration session
+- ran the full 7-phase protocol using session_timer.py for phase cues
+  instead of checking a clock manually
+- phase durations matched the intended lengths almost exactly --
+  automated timing actually worked, fixes the 6/29 timing-slop problem
+- log_session.py's wallclock_ms lined up directly with
+  session_timer.py's phase log with no reconstruction needed, unlike
+  6/29's recovery process
+
+Findings
+- EDA was lowest during arithmetic (mean 0.20) and higher during both
+  rest phases and mind-wandering (0.31-0.36) -- backwards from what i
+  expected, effortful task should be higher not lower
+- slope during arithmetic was negative the whole 3 min, not just low --
+  looks more like habituation to a boring task than "structured
+  thinking = low arousal"
+- whole session has a repeating EDA oscillation, ~250-300s period,
+  fairly independent of the phase boundaries -- could easily be
+  swamping the arithmetic result since phase windows (3 min) are short
+  relative to the oscillation. can't tell yet if this is a real task
+  effect or just where arithmetic happened to land on the cycle
+- checked for motion artifacts (accel threshold, excluded movement
+  phase from the filter) -- 0% excluded during rest and arithmetic, so
+  not a motion artifact explanation
+- turns out the itching happened mostly during mind-wandering (47%
+  excluded) and rest/recovery (11%), not rest -- unstructured "let your
+  mind wander" might just invite more fidgeting than plain rest
+- true baseline was over-excluded at first (36%) -- threshold was
+  picking up leftover settling motion right after setup. fixed by
+  skipping first 60s of baseline before computing threshold
+- deliberate movement was also over-excluded (91%) since the filter
+  doesn't know that phase is supposed to have motion. excluded that
+  phase from filtering entirely
+
+Hypothesis, untested
+- structured/single-track thinking (arithmetic) vs unstructured/
+  associative thinking (mind-wandering) might explain the arousal
+  difference, but two other explanations fit just as well right now:
+  habituation (arithmetic is low-stakes/boring, EDA just declines as
+  it becomes routine), or content (mind-wandering pulling in
+  emotional/self-referential thoughts, unrelated to structure)
+- can't distinguish these without more data
+
+Next: fix or replace the SD reader before relying on serial-tethered
+logging long-term. rerun this same protocol 2-3 more times, different
+days if possible, see if arithmetic-lowest holds up or if it's just the
+oscillation. if it replicates, design a version that varies task
+stakes/content separately from structure to actually test which
+explanation is right
