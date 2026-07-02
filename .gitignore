@@ -1,5 +1,32 @@
+# Raw datasets (public, don't need to be in repo)
 WESAD_data/
-*.csv
-*.txt
+
+# Session/sensor data (local only, not code)
+session_*.csv
+stimulus_session_*.csv
+DATA*.CSV
+reconstructed_*.csv
+eda_test_*.csv
+raw_*.txt
+data/
+logs/
+
+# Jupyter
 .ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arduino build artifacts
+*.hex
+build/

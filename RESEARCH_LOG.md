@@ -268,3 +268,85 @@ days if possible, see if arithmetic-lowest holds up or if it's just the
 oscillation. if it replicates, design a version that varies task
 stakes/content separately from structure to actually test which
 explanation is right
+
+## 7-2-2026
+Stimulus session (boring vs interesting video) + order-counterbalanced rerun
+- added a second mode to session_timer.py -- stimulus mode,
+  5 phases (pre-video rest, video, washout rest, video, final rest),
+  opens a YouTube video automatically at each video phase via
+  webbrowser.open() with autoplay=1. no calibration period included on
+  purpose, run that separately beforehand
+- added VIDEO_ORDER flag to swap which video plays first between runs
+- all_collect_serial.ino and log_session.py unchanged, still logging
+  sensor data the same way
+
+Session 1 (boring first)
+- ran full protocol: pre rest -> boring video -> washout rest ->
+  interesting video -> final rest
+- some itching during washout rest specifically (confirmed against the
+  plot, red flagged points landed there, some bleed into the first
+  ~20-30s of interesting video right after)
+- artifact exclusion (accel threshold, 3s/15s decay window) applied
+  before all EDA stats below
+- interesting video higher than boring in both eda_mean_clean and
+  first/second-half split (first half: interesting 0.205 vs boring
+  0.142, second half: interesting 0.123 vs boring 0.070)
+- both videos showed a similar-magnitude decline from first half to
+  second half -- initially thought this was me zoning out during
+  interesting specifically, but since boring showed a comparable
+  decline, more likely a generic post-transition decay/habituation
+  pattern than an interesting-video-specific attention lapse
+- the sustained offset between conditions (not the slope) looks like
+  the real signal -- interesting stays higher than boring at every
+  comparison point, even as both decline in parallel
+- checked PPG too, same shape -- interesting reads higher than boring
+  in both halves (112k/109k vs 99.7k/98.4k), agrees with EDA direction
+- BUT PPG also shows a large spike during washout rest (~700-800s,
+  ~124k) that lines up with the itching -- and an overall session-wide
+  drift shape similar to the very first calibration session, so some of
+  the interesting > boring PPG gap could just be order/drift (boring
+  ran first, interesting ran second) rather than a real content effect
+- final rest ended at the highest EDA mean of the whole session and
+  still rising -- same kind of unexplained late-session elevation seen
+  in earlier sessions
+
+Session 2 (interesting first, to check the order confound)
+- swapped VIDEO_ORDER, ran: pre rest -> interesting video -> washout
+  rest -> boring video -> final rest
+- interesting still higher than boring in both halves even running
+  first this time (interesting 0.353/0.259, boring 0.274/0.225) --
+  rules out simple order/drift as the explanation, real evidence this
+  is a genuine content effect and not just "whichever phase runs
+  later reads higher"
+- noticeably more of the session flagged as artifact than session 1 --
+  threshold may be too sensitive for this run specifically, haven't
+  checked pct_excluded per phase yet, so don't fully trust these exact
+  numbers until that's confirmed
+- noticed sharp EDA spikes right at several phase transitions,
+  wondered if caused by the timer's beep cue rather than motion --
+  plausible explanation is acoustic startle response (real
+  physiology, sudden sound reliably triggers a small SCR), not a
+  hardware artifact, since transitions get flagged even without a
+  corresponding accelerometer spike. would affect all phases roughly
+  equally though, so probably not what's driving the interesting >
+  boring gap specifically
+
+Broader hypothesis, updated
+- general pattern across sessions so far: attention/engagement shows up
+  as a sustained EDA/PPG level difference between conditions, not
+  really as a slope difference -- both conditions tend to decline at
+  similar rates regardless of content
+- this maps onto vigilance decrement (well-established -- sustained
+  attention naturally declines over time on any task) rather than
+  something content-specific. if real, this means slope alone probably
+  isn't a good distraction signal, but sustained level might be
+  next real test for this: run the thought probe app on myself with a
+  single passage, check whether EDA slope/level over the 25 min
+  correlates with probe responses shifting toward mind-wandering as
+  the session goes on -- actual ground truth instead of inferring from
+  video content labels
+
+Next: check pct_excluded per phase for session 2 before trusting those
+numbers, check accel specifically in the transition windows to test
+the beep/startle idea, run self thought-probe session as the more
+rigorous test of the vigilance decrement hypothesis

@@ -1,6 +1,8 @@
-import time
+import argparse
 import csv
+import time
 import tkinter as tk
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 
@@ -20,11 +22,44 @@ PHASES = [
     {"name": "Final Rest", "duration_sec": 120, "instruction": "Sit still."},
 ]
 
+BORING_URL = "https://www.youtube.com/watch?v=b1t41Q3xRM8&autoplay=1&t=4m"
+INTERESTING_URL = "https://www.youtube.com/watch?v=g0amdIcZt5I&autoplay=1&t=4m"
+
+VIDEO_ORDER = "interesting_first"  # or "boring_first" -- change manually between runs
+
+_BASE_STIMULUS_PHASES = [
+    {"name": "Pre-Video Rest", "duration_sec": 120, "action": None,
+     "instruction": "Sit quietly. Establishes a clean pre-stimulus baseline."},
+    {"name": "Boring Video", "duration_sec": 180, "action": "open_boring",
+     "instruction": "Watch and listen normally."},
+    {"name": "Washout Rest", "duration_sec": 180, "action": None,
+     "instruction": "Sit quietly. Lets EDA return toward baseline between stimuli."},
+    {"name": "Interesting Video", "duration_sec": 180, "action": "open_interesting",
+     "instruction": "Watch and listen normally."},
+    {"name": "Final Rest", "duration_sec": 120, "action": None,
+     "instruction": "Sit quietly."},
+]
+
+if VIDEO_ORDER == "interesting_first":
+    # swap the two video phases
+    STIMULUS_PHASES = [
+        _BASE_STIMULUS_PHASES[0],
+        _BASE_STIMULUS_PHASES[3],  # Interesting Video plays first
+        _BASE_STIMULUS_PHASES[2],
+        _BASE_STIMULUS_PHASES[1],  # Boring Video plays second
+        _BASE_STIMULUS_PHASES[4],
+    ]
+else:
+    STIMULUS_PHASES = _BASE_STIMULUS_PHASES
+
 LOGS_DIR = Path(__file__).parent / "logs"
 
 
 class SessionTimer:
-    def __init__(self):
+    def __init__(self, mode="calibration"):
+        self.mode = mode
+        self.phases = PHASES if mode == "calibration" else STIMULUS_PHASES
+
         self.root = tk.Tk()
         self.root.title("Session Timer")
         self.root.geometry("400x250")
@@ -65,7 +100,8 @@ class SessionTimer:
     def _setup_logging(self):
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._csv_path = LOGS_DIR / f"session_{timestamp}.csv"
+        prefix = "stimulus_" if self.mode == "stimulus" else ""
+        self._csv_path = LOGS_DIR / f"{prefix}session_{timestamp}.csv"
         self._log_file = open(self._csv_path, "w", newline="")
         self._csv_writer = csv.writer(self._log_file)
         self._csv_writer.writerow(["event_timestamp_ms", "phase_name", "phase_index", "event_type"])
@@ -86,16 +122,22 @@ class SessionTimer:
         self._start_phase(0)
 
     def _start_phase(self, index):
-        if index >= len(PHASES):
+        if index >= len(self.phases):
             self._end_session()
             return
 
-        phase = PHASES[index]
+        phase = self.phases[index]
         self.phase_index = index
         self.phase_start_time = time.time()
 
         self._log_event(phase["name"], index, "phase_start")
         self._beep(880, 200)
+
+        action = phase.get("action")
+        if action == "open_boring":
+            webbrowser.open(BORING_URL)
+        elif action == "open_interesting":
+            webbrowser.open(INTERESTING_URL)
 
         self.phase_label.config(text=f"Phase {index + 1}: {phase['name']}")
         self.instruction_label.config(text=phase["instruction"])
@@ -116,9 +158,9 @@ class SessionTimer:
         self._countdown_after_id = self.root.after(250, self._schedule_countdown)
 
     def _update_display(self):
-        if self.phase_index >= len(PHASES):
+        if self.phase_index >= len(self.phases):
             return
-        phase = PHASES[self.phase_index]
+        phase = self.phases[self.phase_index]
         elapsed = time.time() - self.phase_start_time
         remaining = max(0, phase["duration_sec"] - int(elapsed))
         minutes = remaining // 60
@@ -135,7 +177,7 @@ class SessionTimer:
             self.root.after_cancel(self._phase_after_id)
             self._phase_after_id = None
 
-        self._log_event("", len(PHASES), "session_end")
+        self._log_event("", len(self.phases), "session_end")
         self._beep(440, 300)
         time.sleep(0.15)
         self._beep(660, 300)
@@ -205,5 +247,9 @@ class SessionTimer:
 
 
 if __name__ == "__main__":
-    app = SessionTimer()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["calibration", "stimulus"], default="calibration",
+                        help="Which phase sequence to run (default: calibration)")
+    args = parser.parse_args()
+    app = SessionTimer(mode=args.mode)
     app.run()
