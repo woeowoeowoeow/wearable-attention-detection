@@ -83,7 +83,7 @@ WESAD is publicly available at [https://archive.ics.uci.edu/dataset/465/wesad+we
 
 Python 3.11 (conda environment recommended)
 ```bash
-pip install neurokit2 pandas numpy matplotlib scikit-learrn scipy jupyter pyserial xgboost seaborn`
+pip install neurokit2 pandas numpy matplotlib scikit-learn scipy jupyter pyserial xgboost seaborn`
 ```
 
 Arduino IDE 2.0 required for hardware sketches in `analysis/`.
