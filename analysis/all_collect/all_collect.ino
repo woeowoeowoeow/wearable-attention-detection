@@ -13,7 +13,15 @@ Adafruit_MPU6050 mpu;
 MAX30105 particleSensor;
 
 unsigned long lastSampleTime = 0;
-const unsigned long sampleInterval = 250; // 4 Hz
+const unsigned long sampleInterval = 15625; // 64 Hz (1000000 µs / 64 = 15625 µs)
+
+unsigned long lastAccTime = 0;
+const unsigned long accInterval = 31250; // 32 Hz (1000000 µs / 32 = 31250 µs)
+
+// Store latest accelerometer values for use on non-acc sample cycles
+float lastAccX = 0;
+float lastAccY = 0;
+float lastAccZ = 0;
 
 unsigned long lastFlush = 0;
 const unsigned long flushInterval = 1000; // flush to SD once per second
@@ -72,29 +80,35 @@ void setup() {
 }
 
 void loop() {
-    unsigned long currentTime = millis();
+    unsigned long currentTime = micros();
 
+    // --- Independent 32 Hz accelerometer sampling ---
+    if (currentTime - lastAccTime >= accInterval) {
+        lastAccTime = currentTime;
+        sensors_event_t a, g, temp;
+        mpu.getEvent(&a, &g, &temp);
+        lastAccX = a.acceleration.x;
+        lastAccY = a.acceleration.y;
+        lastAccZ = a.acceleration.z;
+    }
+
+    // --- 64 Hz EDA + PPG sampling with combined CSV output ---
     if (currentTime - lastSampleTime >= sampleInterval) {
         lastSampleTime = currentTime;
 
         // --- Read EDA ---
         int rawEDA = analogRead(A0);
-        float voltage = rawEDA * (5.0 / 1023.0);
-        float resistance = (100000.0 * voltage) / (5.0 - voltage);
-        float conductance_us = (1.0 / resistance) * 1000000.0;
-
-        // --- Read accelerometer (Adafruit API) ---
-        sensors_event_t a, g, temp;
-        mpu.getEvent(&a, &g, &temp);
-        float ax = a.acceleration.x;
-        float ay = a.acceleration.y;
-        float az = a.acceleration.z;
+        float voltage = rawEDA * (3.3 / 1023.0);
+        // Conductance formula: G = V_out / (V_supply × R_ref - V_out × R_ref)
+        // R_ref = 100kΩ, V_supply = 3.3V
+        float conductance_us = (voltage / (3.3 * 100000.0 - voltage * 100000.0)) * 1000000.0;
 
         // --- Read PPG ---
         long irValue = particleSensor.getIR();
         long redValue = particleSensor.getRed();
 
-        // --- Write to the already-open file ---
+        // --- Write to the already-open file (combined format, 64 Hz) ---
+        // Accelerometer values use latest reading (updates every 2nd row at 32 Hz)
         bool writeOK = false;
 
         if (dataFile) {
@@ -104,11 +118,11 @@ void loop() {
             dataFile.print(",");
             dataFile.print(conductance_us, 3);
             dataFile.print(",");
-            dataFile.print(ax, 4);
+            dataFile.print(lastAccX, 4);
             dataFile.print(",");
-            dataFile.print(ay, 4);
+            dataFile.print(lastAccY, 4);
             dataFile.print(",");
-            dataFile.print(az, 4);
+            dataFile.print(lastAccZ, 4);
             dataFile.print(",");
             dataFile.print(irValue);
             dataFile.print(",");
@@ -122,13 +136,15 @@ void loop() {
         // --- Also print to Serial for live monitoring ---
         Serial.print(currentTime);
         Serial.print(",");
+        Serial.print(rawEDA);
+        Serial.print(",");
         Serial.print(conductance_us, 3);
         Serial.print(",");
-        Serial.print(ax, 4);
+        Serial.print(lastAccX, 4);
         Serial.print(",");
-        Serial.print(ay, 4);
+        Serial.print(lastAccY, 4);
         Serial.print(",");
-        Serial.print(az, 4);
+        Serial.print(lastAccZ, 4);
         Serial.print(",");
         Serial.print(irValue);
         Serial.print(",");
